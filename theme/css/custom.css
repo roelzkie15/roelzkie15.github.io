@@ -323,3 +323,40 @@
         border-bottom-color: #33C3F0;
     }
 }
+
+/* Custom CSS */
+
+.profile-image {
+    height: 250px;
+    width: 350px;
+    margin: 0 auto;
+    display: block;
+}
+
+.profile-name {
+    font-size: 32px;
+    font-weight: 600;
+    text-align: center;
+    padding: 8px;
+}
+
+.profile-pos {
+    font-size: 18px;
+    font-weight: 100;
+    text-align: center;
+}
+
+.profile-social {
+    text-align: center;
+    padding: 8px;
+}
+
+.profile-social a {
+    text-decoration: none; 
+}
+
+.profile-social img {
+    height: 40px;
+    width: 40px;
+    margin: 5px 5px;
+}

@@ -54,7 +54,7 @@
 
             <p>
                 The parallel capacity of Celery is based on how many worker instances you run and how many child
-                processes in a single worker instance are set.
+                processes in a single worker instance you've set.
             </p>
 
             <pre class="code-example">
@@ -129,7 +129,7 @@
             </pre>
 
             <p>
-                Now it's only limited to processing 2 tasks simultaneously.
+                Now it's only limited to processing 2 tasks simultaneously. Processes 15491 and 15491.
             </p>
 
             <p>
@@ -152,7 +152,7 @@ app = Celery("tasks", broker="amqp://guest:guest@localhost:5672")
 
 
 @app.task
-def cpu_intensive_func(id: int, intensity: int) -> int:
+def cpu_intensive_func(id: int, intensity: int) -> str:
     """Consumes CPU resources for the specified duration and intensity."""
 
     message = f"Execution ID: {id} / Process ID: {os.getpid()}"
@@ -168,7 +168,6 @@ def cpu_intensive_func(id: int, intensity: int) -> int:
 # Rollout 10 cpu_intensive_func tasks each will take 3 seconds.
 group(cpu_intensive_func.s(i, 3, 100000) for i in range(10))()
                 </code>
-
                 <code class="code-example-body prettyprint">
 [2024-01-05 22:53:41,455: INFO/ForkPoolWorker-2] Task celery_app.cpu_intensive_func[06cdfc41-120e-44c5-a177-7631139a212d] succeeded in 3.0003304999991087s: 'Execution ID: 0 / Process ID: 15492'
 [2024-01-05 22:53:41,455: INFO/ForkPoolWorker-1] Task celery_app.cpu_intensive_func[c4d97ca2-1a65-4b64-9e7e-04190ae36d7c] succeeded in 3.001020208001137s: 'Execution ID: 1 / Process ID: 15491'
@@ -182,6 +181,14 @@ group(cpu_intensive_func.s(i, 3, 100000) for i in range(10))()
 [2024-01-05 22:53:53,461: INFO/ForkPoolWorker-1] Task celery_app.cpu_intensive_func[dec8de30-0b71-40da-b4d6-ae9c88321550] succeeded in 3.000751625000703s: 'Execution ID: 9 / Process ID: 15491'
                 </code>
             </pre>
+
+            <p>
+                <img style="width: 100%;" src="./htop.png" alt="htop">
+            </p>
+
+            <p>
+                Image shows two CPU cores 3 and 7 are at or almost 100%.
+            </p>
 
             <p>
                 Notice the <code>Process ID: [PID]</code>. Each <code>cpu_intensive_func</code> is delegated in a

@@ -152,7 +152,7 @@ app = Celery("tasks", broker="amqp://guest:guest@localhost:5672")
 
 
 @app.task
-def cpu_intensive_func(id: int, intensity: int) -> str:
+def cpu_intensive_func(id: int, duration: int, intensity: int) -> str:
     """Consumes CPU resources for the specified duration and intensity."""
 
     message = f"Execution ID: {id} / Process ID: {os.getpid()}"
@@ -211,7 +211,7 @@ group(cpu_intensive_func.s(i, 3, 100000) for i in range(10))()
             <h2>Conclusion</h2>
 
             <p>
-                So Celery parallelism is based on the number of concurrency and increasing the concurrency will decrease
+                So Celery parallelism is based on the number of concurrency and increasing the concurrency will speed up
                 the task completion time. But make sure to only set concurrency not more than the number of your CPU
                 cores otherwise, it will cause some performance issues by taking other CPU resources and switching over
                 again which is resource-consuming and may affect other applications.

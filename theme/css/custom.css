@@ -257,3 +257,17 @@
     text-decoration: none;
     color: inherit;
 }
+
+.article-subheader {
+    display:flex;
+}
+
+.article-subheader .article-tags {
+    padding-bottom: 0;
+    margin-top: 2px;
+    margin-left: 30px;
+}
+
+.article-content {
+    font-size: 1.2em;
+}

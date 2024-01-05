@@ -1,0 +1,219 @@
+<html>
+
+<head>
+    <title>Roel Delos Reyes | Articles | Celery -- Parallel Tasks</title>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+
+    <!-- FONT -->
+    <link href='//fonts.googleapis.com/css?family=Raleway:400,300,600' rel='stylesheet' type='text/css'>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../theme/css/normalize.css" />
+    <link rel="stylesheet" href="../../theme/css/skeleton.css" />
+    <link rel="stylesheet" href="../../theme/css/custom.css" />
+    <link rel="stylesheet" href="../../theme/css/codeprettify.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/default.min.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <ul class="navbar-list">
+                <li class="navbar-item"><a class="navbar-link" href="/">About Me</a></li>
+                <li class="navbar-item"><a class="navbar-link" href="/articles">Articles</a></li>
+                <li class="navbar-item"><a class="navbar-link" href="/projects">Projects</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+
+        <div class="article-header docs-section">
+            <h1>Celery — Parallel Tasks</h1>
+            <div class="article-subheader">
+                <span>Published on Jan 4, 2023</span>
+                <div class="article-tags">
+                    <span class="article-chip">
+                        <a href="/tags/python">Python</a>
+                    </span>
+                    <span class="article-chip">
+                        <a href="/tags/celery">Celery</a>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="article-content docs-section">
+            <p>
+                Celery is a distributed task queue framework that delegates tasks across multiple workers or threads. It
+                supports parallel processing. As a reader, I assume that you already have a prior knowledge about the basics of Celery and this
+                article will only focus on the parallel tasks feature of Celery.
+            </p>
+
+            <p>
+                The parallel capacity of Celery is based on how many worker instances you run and how many child
+                processes in a single worker instance are set.
+            </p>
+
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">$ celery -A celery_app worker --loglevel=INFO</code>
+                <code class="code-example-body prettyprint">
+    -------------- celery@roelzkie v5.3.6 (emerald-rush)
+--- ***** ----- 
+-- ******* ---- macOS-11.0.1-arm64-arm-64bit 2024-01-05 23:32:13
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         tasks:0x10651dcd0
+- ** ---------- .> transport:   amqp://guest:**@localhost:5672//
+- ** ---------- .> results:     disabled://
+- *** --- * --- .> concurrency: 8 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+    -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                </code>
+            </pre>
+
+            <p>
+                Notice that this single worker has 8 child processors by default. See
+                <code>concurrency: 8 (prefork)</code>.
+            </p>
+
+            <p>
+                This means that my machine can do 8 processes at the same time. It could be different in your case.
+                Here's how you check the CPU details in the macOS-based machine.
+            </p>
+
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">$ sysctl -n hw.physicalcpu</code>
+            </pre>
+
+            <p>
+                For Linux-based OS see this link: <a href="https://unix.stackexchange.com/q/218074/278825"
+                    target="_blank">https://unix.stackexchange.com/q/218074/278825</a>.
+            </p>
+
+            <p>
+                You can also control the number of concurrency by providing <code>--concurrency</code> or
+                <code>-c</code> option when starting a celery worker.
+            </p>
+
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">$ celery -A celery_app worker --loglevel=INFO -c 2</code>
+            </pre>
+
+            <p>
+                You may also check the pool details of the <code>celery_app</code> via:
+            </p>
+
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">$ celery -A celery_app inspect stats</code>
+            </pre>
+
+            <p>
+                In the <code>pool</code> information, check the <code>processes</code>.
+            </p>
+
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+"pool": {
+    ... 
+    "processes": [
+        15491,
+        15492
+    ]
+}
+                </code>
+            </pre>
+
+            <p>
+                Now it's only limited to processing 2 tasks simultaneously.
+            </p>
+
+            <p>
+                Now let's explore celery parallel tasks execution with the given worker setup above having 2
+                concurrencies.
+            </p>
+
+            <p>
+                Imagine you have a function <code>cpu_intensive_func</code> that processes something that could take
+                seconds to complete.
+            </p>
+
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+import os
+
+from celery import Celery, group
+
+app = Celery("tasks", broker="amqp://guest:guest@localhost:5672")
+
+
+@app.task
+def cpu_intensive_func(id: int, intensity: int) -> int:
+    """Consumes CPU resources for the specified duration and intensity."""
+
+    message = f"Execution ID: {id} / Process ID: {os.getpid()}"
+    start_time = time.time()
+    while time.time() - start_time < duration:
+        for _ in range(intensity):
+            # Intensive floating-point calculation
+            x = 1.00000001 ** 10000000
+
+    return message
+
+
+# Rollout 10 cpu_intensive_func tasks each will take 3 seconds.
+group(cpu_intensive_func.s(i, 3, 100000) for i in range(10))()
+                </code>
+
+                <code class="code-example-body prettyprint">
+[2024-01-05 22:53:41,455: INFO/ForkPoolWorker-2] Task celery_app.cpu_intensive_func[06cdfc41-120e-44c5-a177-7631139a212d] succeeded in 3.0003304999991087s: 'Execution ID: 0 / Process ID: 15492'
+[2024-01-05 22:53:41,455: INFO/ForkPoolWorker-1] Task celery_app.cpu_intensive_func[c4d97ca2-1a65-4b64-9e7e-04190ae36d7c] succeeded in 3.001020208001137s: 'Execution ID: 1 / Process ID: 15491'
+[2024-01-05 22:53:44,456: INFO/ForkPoolWorker-2] Task celery_app.cpu_intensive_func[116af0cd-8cab-4a77-86ea-9b3e6df503e1] succeeded in 3.0006894170001033s: 'Execution ID: 2 / Process ID: 15492'
+[2024-01-05 22:53:44,456: INFO/ForkPoolWorker-1] Task celery_app.cpu_intensive_func[e2bc101e-4d4b-418f-aa17-3b9e1109c84e] succeeded in 3.0005129589990247s: 'Execution ID: 3 / Process ID: 15491'
+[2024-01-05 22:53:47,457: INFO/ForkPoolWorker-2] Task celery_app.cpu_intensive_func[3433c6ef-9bed-458d-9b27-ab7a269433ad] succeeded in 3.000148374998389s: 'Execution ID: 4 / Process ID: 15492'
+[2024-01-05 22:53:47,458: INFO/ForkPoolWorker-1] Task celery_app.cpu_intensive_func[aa78ed42-73c0-4406-a178-ebffd33d7e13] succeeded in 3.0006364170003508s: 'Execution ID: 5 / Process ID: 15491'
+[2024-01-05 22:53:50,458: INFO/ForkPoolWorker-2] Task celery_app.cpu_intensive_func[2778838e-cadd-458a-be7e-d4acd2afdc67] succeeded in 3.000157250000484s: 'Execution ID: 6 / Process ID: 15492'
+[2024-01-05 22:53:50,459: INFO/ForkPoolWorker-1] Task celery_app.cpu_intensive_func[f05b6c9d-40a1-4fac-b409-583bc904ff09] succeeded in 3.001206042001286s: 'Execution ID: 7 / Process ID: 15491'
+[2024-01-05 22:53:53,459: INFO/ForkPoolWorker-2] Task celery_app.cpu_intensive_func[73a93c04-9c78-4b53-8dfb-119b854a9a01] succeeded in 3.0006820839989814s: 'Execution ID: 8 / Process ID: 15492'
+[2024-01-05 22:53:53,461: INFO/ForkPoolWorker-1] Task celery_app.cpu_intensive_func[dec8de30-0b71-40da-b4d6-ae9c88321550] succeeded in 3.000751625000703s: 'Execution ID: 9 / Process ID: 15491'
+                </code>
+            </pre>
+
+            <p>
+                Notice the <code>Process ID: [PID]</code>. Each <code>cpu_intensive_func</code> is delegated in a
+                separate worker threads (15491 and 15492) and the processes took 12-15 seconds to complete.
+            </p>
+
+            <p>
+                If we only set a single worker with one processor (concurrency):
+            </p>
+
+
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">$ celery -A celery_app worker --loglevel=INFO -c 1</code>
+            </pre>
+
+            <p>
+                The tasks will take 30 seconds to complete and this is not parallelism anymore.
+            </p>
+
+            <h2>Conclusion</h2>
+
+            <p>
+                So Celery parallelism is based on the number of concurrency and increasing the concurrency will decrease
+                the task completion time. But make sure to only set concurrency not more than the number of your CPU
+                cores otherwise, it will cause some performance issues by taking other CPU resources and switching over
+                again which is resource-consuming and may affect other applications.
+            </p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</body>
+
+</html>

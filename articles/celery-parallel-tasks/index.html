@@ -212,7 +212,7 @@ group(cpu_intensive_func.s(i, 3, 100000) for i in range(10))()
             <h2>Conclusion</h2>
 
             <p>
-                So Celery parallelism is based on the number of concurrency and increasing the concurrency will decrease
+                So Celery parallelism is based on the number of concurrency and increasing the concurrency will speed up
                 the task completion time. But make sure only to set concurrency at most the number of your CPU cores
                 otherwise, it will cause some performance issues by taking other CPU resources and switching over again
                 which is resource-consuming and may affect other applications.

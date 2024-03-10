@@ -12,6 +12,14 @@
     vertical-align: middle;
 }
 
+.project-title > h4 > a {
+    color: black
+}
+
+.project-title > h4 > a:hover {
+    color: #33C3F0;
+}
+
 .header {
     margin-top: 6rem;
     text-align: center;

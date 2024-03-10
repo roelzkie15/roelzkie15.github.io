@@ -2,6 +2,16 @@
     max-width: 800px;
 }
 
+.container.profile-container {
+    display: table;
+    height: 100%;
+}
+
+.docs-section.section-container {
+    display: table-cell;
+    vertical-align: middle;
+}
+
 .header {
     margin-top: 6rem;
     text-align: center;
@@ -177,6 +187,12 @@
     color: #33C3F0;
 }
 
+.my-title {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    color: #33C3F0;
+}
+
 /* Custom CSS */
 
 .profile-image {
@@ -184,6 +200,7 @@
     width: 350px;
     margin: 0 auto;
     display: block;
+    object-fit: contain;
 }
 
 .profile-name {

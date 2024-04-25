@@ -209,6 +209,8 @@
     margin: 0 auto;
     display: block;
     object-fit: contain;
+    border-radius: 10px;
+    background-color: #323232;
 }
 
 .profile-name {
@@ -251,6 +253,11 @@
 .article-item {
     margin-top: 30px;
     border-bottom: #F2F2F2 1px solid;
+}
+
+.article-item .tag {
+  text-decoration: underline;
+  text-decoration-color: #33C3F0;
 }
 
 .article-item-desc {

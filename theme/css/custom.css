@@ -216,7 +216,7 @@
     display: block;
     object-fit: contain;
     border-radius: 10px;
-    background-color: #323232;
+    /* background-color: #323232; */
 }
 
 .profile-name {

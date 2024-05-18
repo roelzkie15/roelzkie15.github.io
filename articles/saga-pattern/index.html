@@ -1,0 +1,231 @@
+<html>
+
+<head>
+    <title>Roel Delos Reyes | Articles | Saga Pattern</title>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+
+    <!-- FONT -->
+    <link href='//fonts.googleapis.com/css?family=Raleway:400,300,600' rel='stylesheet' type='text/css'>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../theme/css/normalize.css" />
+    <link rel="stylesheet" href="../../theme/css/skeleton.css" />
+    <link rel="stylesheet" href="../../theme/css/custom.css" />
+    <link rel="stylesheet" href="../../theme/css/codeprettify.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/default.min.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <ul class="navbar-list">
+                <li class="navbar-item"><a class="navbar-link" href="/">About Me</a></li>
+                <li class="navbar-item"><a class="navbar-link" href="/articles">Articles</a></li>
+                <li class="navbar-item"><a class="navbar-link" href="/projects">Projects</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+
+        <div class="article-header docs-section">
+            <h1>Saga Pattern</h1>
+            <div class="article-subheader">
+                <div class="article-tags">
+                    <span>Published on May 19, 2024</span>
+                    <span class="article-chip">
+                        <a href="/tags/python">Python</a>
+                    </span>
+                    <span class="article-chip">
+                        <a href="/tags/microservice">Microservice</a>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="article-content docs-section">
+            <p>
+                In a monolithic system, a database transaction should ensure consistent query results after a successful request.
+                Otherwise, it should rollback all the commits that were made to the previous state (Atomicity).
+                Atomic transaction is common and easily achievable in a single database system.
+            </p>
+
+            <p>
+                However, in a distributed system you may need to handle this differently ensuring data consistency across multiple services
+                and where each service have its own database. So traditional ACID approach wouldn't work.
+            </p>
+
+            <p>
+                <h4 id="problem">Problem</h4>
+                <p>
+                    For example, we have three services: <b>Payment service</b>, <b>Invoicing service</b> and <b>Debtor service</b>.
+                </p>
+    
+                <p>
+                    <div>
+                        <img src="/images/articles/saga-pattern/database-per-service.png" alt="database-per-service-illustration">
+                    </div>
+                </p>
+    
+                <p>
+                    Imagine a debtor initiate a full payment to an invoice and we want to capture that transaction
+                    through the payment service then set the invoice status into "paid" and update the debtor outstanding balance.
+                </p>
+            </p>
+
+            <p>
+                <h4>Solution</h4>
+
+                <p>
+                    One of the most common approach to achieve transaction that spans multiple services is by using the Saga Pattern.
+                </p>
+
+                <p>
+                    A Saga is a sequence of local transactions and each transaction will publish messages or events that trigger the
+                    next local transaction.
+                </p>
+
+                <p>
+                    If something goes wrong to a participating microservice, there should be a compensating transaction to undo the changes that were
+                    made by the preceding local transactions.
+                </p>
+
+                <p>
+                    Now there are two popular Saga based approaches.
+
+                    <ol>
+                        <li><strong>Choreography-based Saga</strong></li>
+                        <li><strong>Orchestration-based Saga</strong></li>
+                    </ol>
+                </p>
+            </p>
+
+            <p>
+                <h4>Choreography-based Saga Example</h4>
+
+                <p>
+                    It is when microservices publish a message/event from a local transaction and trigger subscribers or participating microservices
+                    for the next local transaction. See image below as an example that solves the given <a href="#problem">Problem</a>:
+                </p>
+
+                <a href="/images/articles/saga-pattern/choreography-workflow.png" target="_blank">
+                    <img src="/images/articles/saga-pattern/choreography-workflow.png" alt="workflow">
+                </a>
+
+                <p>
+                    <ol>
+                        <li>The <code>Payment Service</code> will create a payment transaction and produce an <code>Invoice Update Event</code>.</li>
+                        <li>The <code>Invoice Service</code> listens to this event to update the given invoice status to <code>paid</code>.</li>
+                        <li>This will also produce <code>Debtor Update Event</code> signaling the <code>Debtor Service</code> for the next operation.</li>
+                        <li>The <code>Debtor Service</code> listens to this event and do the outstanding calculation update.</li>
+                        <li>It will then produce an <code>Outstanding Deducted Event</code> that will communicate back to the <code>Payment Service</code>.</li>
+                        <li>The <code>Payment Service</code> receives an updated that a successful debtor outstanding balance was reflected ending the payment transaction flow.</li>
+                    </ol>
+                </p>
+
+                <h5>Compensating (Rollback) Transaction</h5>
+
+                <a href="/images/articles/saga-pattern/choreography-rollback-workflow.png" target="_blank">
+                    <img src="/images/articles/saga-pattern/choreography-rollback-workflow.png" alt="workflow">
+                </a>
+
+                <p>
+                    <ol>
+                        <li>The <code>Payment Service</code> will create a payment transaction and produce an <code>Invoice Update Event</code>.</li>
+                        <li>The <code>Invoice Service</code> listens to this event to update the given invoice status to <code>paid</code>.</li>
+                        <li>This will also produce <code>Debtor Update Event</code> signaling the <code>Debtor Service</code> for the next operation.</li>
+                        <li>The <code>Debtor Service</code> listens to this event and do the outstanding calculation update. <u>However, this operation failed to update debtor outstanding balance for some reason e.g. a validation error</u>.</li>
+                        <li>The <code>Debtor Service</code> will trigger a new event called <code>Invoice Revert Event</code> to instruct the <code>Invoice Service</code> of the next operation.</li>
+                        <li>The <code>Invoice Service</code> receives the event and will revert the invoice status back to <code>created</code>.</li>
+                        <li>It will then produce a <code>Payment Revert Event</code> to signal the <code>Payment Service</code>.</li>
+                        <li>The <code>Payment Service</code> receives the event and ending the transaction with a failed payment process.</li>
+                    </ol>
+                </p>
+
+                <h5>Benefits and drawbacks</h5>
+                
+                <ul>
+                    <li>No additional complexity for coordination logic.</li>
+                    <li>Very simple and easy to implement with smaller workflows.</li>
+                    <li>Hard to maintain when it grows.</li>
+                    <li>Cyclic dependency between participating services.</li>
+                    <li>Hard to tests as you will need to run all applications that are involved.</li>
+                </ul>
+            </p>
+
+            <p>
+                <h4>Orchestration-based Saga Example</h4>
+
+                <p>
+                    It is when microservices have an orchestrator to command what participating microservices should trigger the next local transaction.
+                    The participating microservices should send a reply back to the local orchestrator before triggering the next service.
+                </p>
+
+                <p>
+                    Below is the illustration of the workflow solution of the given <a href="#problem">Problem</a> above.
+                </p>
+
+                <a href="/images/articles/saga-pattern/orchestrator-workflow.png" target="_blank">
+                    <img src="/images/articles/saga-pattern/orchestrator-workflow.png" alt="workflow">
+                </a>
+
+                <p>
+                    <ol>
+                        <li><code>Payment Service</code> creates a payment transaction and triggers to start the <code>Payment Service Orchestrator</code>.</li>
+                        <li><code>Payment Service Orchestrator</code> produces an <code>Invoice Update Event</code> that will tell <code>Invoice Service</code> what to do.</li>
+                        <li>The <code>Invoice Service</code> receives the event and updates the invoice status to <code>paid</code>.</li>
+                        <li>This will produce a succesful invoice update response back to <code>Payment Orchestration Event Reply</code>.</li>
+                        <li><code>Payment Service Orchestrator</code> receives the event of a successful invoice update operation.</li>
+                        <li>After a successful invoice status update, it will trigger a <code>Debtor Update Event</code>.</li>
+                        <li>The <code>Debtor Service</code> receives the event to update a debtor outstanding balance.</li>
+                        <li>And will produce a successful response of debtor outstanding update to the <code>Payment Orchestration Event Reply</code>.</li>
+                        <li>This will signal <code>Payment Service Orchestrator</code> of a successful debtor update operation.</li>
+                        <li>Then <code>Payment Service Orchestrator</code> will tell the <code>Payment Service</code> that a payment process was successful.</li>
+                    </ol>
+                </p>
+
+                <h5>Compensating (Rollback) Transaction</h5>
+
+                <a href="/images/articles/saga-pattern/orchestrator-rollback-workflow.png" target="_blank">
+                    <img src="/images/articles/saga-pattern/orchestrator-rollback-workflow.png" alt="workflow">
+                </a>
+
+                <p>
+                    <ol>
+                        <li><code>Payment Service</code> creates a payment transaction and triggers to start the <code>Payment Service Orchestrator</code>.</li>
+                        <li><code>Payment Service Orchestrator</code> produces an <code>Invoice Update Event</code> that will tell <code>Invoice Service</code> what to do.</li>
+                        <li>The <code>Invoice Service</code> receives the event and updates the invoice status to <code>paid</code>.</li>
+                        <li>This will produce a succesful invoice update response back to <code>Payment Orchestration Event Reply</code>.</li>
+                        <li><code>Payment Service Orchestrator</code> receives the event of a successful invoice update operation.</li>
+                        <li>After a successful invoice status update, it will trigger a <code>Debtor Update Event</code>.</li>
+                        <li>That will call <code>Debtor Service</code> to update a debtor outstanding balance. <u>However, this operation failed to update debtor outstanding balance for some reason e.g. a validation error.</u></li>
+                        <li>The <code>Debtor Service</code> will produce a response to <code>Payment Orchestration Event Reply</code> that a debtor update failed.</li>
+                        <li>The <code>Payment Orchestration Event Reply</code> will signal <code>Payment Service Orchestrator</code> of the failed debtor update operation.</li>
+                        <li>Then <code>Payment Service Orchestrator</code> will trigger a <code>Invoice Revert Event</code>.</li>
+                        <li>To instruct <code>Invoice Service</code> to revert invoice status back to the initial state e.g. <code>created</code>.</li>
+                        <li>Then the <code>Invoice Service</code> will return a response to the <code>Payment Orchestration Event Reply</code> of a successful invoice status revert.</li>
+                        <li>This signals the <code>Payment Service Orchestrator</code> of a successful invoice state rollback.</li>
+                        <li>And will tell <code>Payment Service</code> that a payment process did not push through and every state of data is still the same like nothing happened.</li>
+                    </ol>
+                </p>
+
+
+                <h5>Benefits and drawbacks</h5>
+
+                <ul>
+                    <li>Complex saga orchestration implementation.</li>
+                    <li>No cyclic dependency.</li>
+                    <li>Distribution of transactions are centralized.</li>
+                    <li>Testable Orchestrator commands.</li>
+                    <li>Handle rollback transaction better.</li>
+                </ul>
+
+            </p>
+
+        </div>
+    </div>
+</body>
+
+</html>

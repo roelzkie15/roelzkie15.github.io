@@ -28,6 +28,33 @@
 
     <div class="container articles">
         <section id="article-section">
+
+            <!-- Microservice -- Saga Pattern -->
+            <div class="article-item">
+                <span>Published on May 19, 2024</span>
+                <h5><strong><a href="/articles/saga-pattern/">Saga Pattern</a></strong></h5>
+                <div class="article-item-desc">
+                    <p>
+                        In a monolithic system, a database transaction should ensure consistent query results after a successful request.
+                        Otherwise, it should rollback all the commits that were made to the previous state (Atomicity).
+                        Atomic transaction is common and easily achievable in a single database system.
+                    </p>
+
+                    <p>
+                        However, in a distributed system you may need to handle this differently ensuring data consistency across multiple services
+                        and where each service have its own database. So traditional ACID approach wouldn't work.
+                    </p>
+                </div>
+                <div class="article-tags">
+                    <span class="article-chip">
+                        <a href="/tags/python">Python</a>
+                    </span>
+                    <span class="article-chip">
+                        <a href="/tags/microservice">Microservice</a>
+                    </span>
+                </div>
+            </div>
+
             <!-- Celery -- Parallel Tasks -->
             <div class="article-item">
                 <span>Published on Jan 6, 2024</span>
@@ -46,7 +73,6 @@
                     </span>
                 </div>
             </div>
-
         </section>
     </div>
 

@@ -35,7 +35,37 @@
                     </h4>
                 </div>
                 <div class="project-content">
-                    A password manager web application (E2E and Zero Knowledge principle) built on top of Django and Svelte (TypeScript).
+                    <p>
+                        A password manager web application (E2E encryption and Zero Knowledge principle) built on top of
+                        Django and Svelte (TypeScript).
+                    </p>
+
+                    <p>
+                        <strong>Key features:</strong>
+                    </p>
+
+                    <p>
+                        <strong>End-to-end encryption</strong>: Passwords and data are encrypted and authenticated using
+                        a 512-bit symmetric key: AES CTR 256-bit for confidentiality and HMAC 256-bit for integrity.
+                    </p>
+                    <p>
+                        <strong>Secure master password</strong>: The master password is salted and hashed via the
+                        Password-Based Key Derivation Function 2 (SHA-256) and is stretched using the HMAC-based
+                        Extract-and-Expand Key Derivation Function (SHA-512). The master and stretched master
+                        passwords are not sent to the server.
+                    </p>
+
+                    <p>
+                        <strong>Zero-knowledge encryption</strong>: Users' vault items are encrypted locally before they
+                        are sent to the server. There's no way for MellonPass (basically, me) to see the data, and only
+                        you can decrypt them using your master password.
+                    </p>
+
+                    <p>
+                        <strong>DB Column-level encryption</strong>: Each database column that stores cipher texts is
+                        encrypted using Fernet (AES-CBC 128-bit, HMAC 256-bit, IV generated from a cryptographic secure
+                        random number generator). -->
+                    </p>
                 </div>
             </div>
         </div>
@@ -43,7 +73,9 @@
             <div class="project-section">
                 <div class="project-title">
                     <h4>
-                        <a target="_blank" href="https://github.com/roelzkie15/django-strawberry-subscription-example">Django Strawberry GraphQL Subscription Example</a>
+                        <a target="_blank"
+                            href="https://github.com/roelzkie15/django-strawberry-subscription-example">Django
+                            Strawberry GraphQL Subscription Example</a>
                     </h4>
                 </div>
                 <div class="project-content">

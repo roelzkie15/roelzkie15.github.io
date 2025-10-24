@@ -1,0 +1,631 @@
+<html>
+
+<head>
+    <title>Roel Delos Reyes | Articles | Concurrency vs Parallelism in Python</title>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+
+    <!-- FONT -->
+    <link href='//fonts.googleapis.com/css?family=Raleway:400,300,600' rel='stylesheet' type='text/css'>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../theme/css/normalize.css" />
+    <link rel="stylesheet" href="../../theme/css/skeleton.css" />
+    <link rel="stylesheet" href="../../theme/css/custom.css" />
+    <link rel="stylesheet" href="../../theme/css/codeprettify.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/default.min.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <ul class="navbar-list">
+                <li class="navbar-item"><a class="navbar-link" href="/">About Me</a></li>
+                <li class="navbar-item"><a class="navbar-link" href="/articles">Articles</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+
+        <div class="article-header docs-section">
+            <h1>Concurrency vs Parallelism in Python</h1>
+            <div class="article-subheader">
+                <div class="article-tags">
+                    <span>Published on Oct 25, 2025</span>
+                    <span class="article-chip">
+                        <a href="/tags/python">Python</a>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="article-content docs-section">
+            <p>
+                My understanding of concurrency and parallelism was very crucial, and it helped me formulate the right
+                solution to the problems caused by the single-threaded and synchronous nature of Python. This article explains my understanding
+                of concurrency and parallelism.
+            </p>
+
+            <h4 id="what-is-concurrency">What is concurrency?</h4>
+            <p>
+                <b>Concurrency</b> is an approach that handles multiple operations that overlap each other. Not
+                necessarily simultaneously (<b>parallelism</b>).
+                There are two types of approaches: <b>Preemptive</b> and <b>Cooperative</b>.
+            </p>
+            <p>
+                <b>Preemptive</b> is where the program relies on the OS to handle switching of threads (<i>context
+                    switch</i>). The OS has an interrupt mechanism to
+                suspend an operation and schedule which operation should be executed next at any given time, making sure
+                that all tasks will get an amount of CPU time.
+                E.g. <code>ThreadPoolExecutor</code>.
+            </p>
+            <p>
+                <b>Cooperative</b>, an asynchronous approach, does not rely on the OS thread to schedule processes.
+                Instead, the switching of a context happens in the
+                language mechanism controlled explicitly by the <code>async/await</code> syntax. It can be done in a
+                single-thread. E.g. <code>asyncio</code>.
+            </p>
+
+            <h4 id="what-is-parallelism">What is parallelism?</h4>
+            <p>
+                <b>Parallelism</b> in Python is best suited for CPU-bound tasks, leveraging multiple cores (CPU) to
+                execute multiple processes separately and simultaneously.
+                Each core will have its own copy (fork) of the Python interpreter, having its own GIL and memory space,
+                so they can truly process different programs at the
+                same time achieving true parallelism. E.g. <code>ProcessExecutor</code>.
+            </p>
+
+            <h4 id="performing-io-bound">Performing I/O Bound Component</h4>
+            <p>
+                Let's use an I/O network request example, like downloading a page from a site using <b>synchronous</b>
+                (non-concurrent), <b>multi-threading</b> (concurrent), <b>async i/o</b> (concurrent) and
+                <b>multi-processing</b> (parallel) versions to see how quickly the program runs.
+            </p>
+
+            <b>Synchronous version:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+import time
+
+import requests
+
+
+def main():
+    sites = [
+        "https://www.python.org",
+        "https://www.docker.com",
+        "https://github.com",
+    ] * 100
+    start_time = time.perf_counter()
+    with requests.Session() as session:
+        for site in sites:
+            get_site(session, site)
+    duration = time.perf_counter() - start_time
+    print(f"Done retrieving {len(sites)} sites in {duration} seconds.")
+
+
+def get_site(session, site):
+    response = session.get(site)
+    print(f"Got {len(response.content)} bytes from {site}.")
+
+
+if __name__ == "__main__":
+    main()
+
+                </code>
+            </pre>
+            <b>Output:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+(venv) % python io_sync.py
+Got 50282 bytes from https://www.python.org.
+Got 366082 bytes from https://www.docker.com.
+Got 563573 bytes from https://github.com.
+.
+.
+.
+Done retrieving 300 sites in 32.525531874998705 seconds.
+                </code>
+            </pre>
+            <p>
+                It took <b>32 seconds</b> because the single-threaded program is waiting for the network to finish before moving on to the next one.
+            </p>
+
+            <b>Multi-threaded version:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+import time
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
+
+import requests
+
+
+def main():
+    sites = [
+        "https://www.python.org",
+        "https://www.docker.com",
+        "https://github.com",
+    ]
+    start_time = time.perf_counter()
+    with requests.Session() as session:
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            get_site_with_session = partial(get_site, session)
+            executor.map(get_site_with_session, sites)
+    duration = time.perf_counter() - start_time
+    print(f"Done retrieving {len(sites)} sites in {duration} seconds.")
+
+
+def get_site(session, site):
+    response = session.get(site)
+    print(f"Got {len(response.content)} bytes from {site}.")
+
+
+if __name__ == "__main__":
+    main()
+                </code>
+            </pre>
+            <b>Output:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+(venv) % python io_multi_threading.py
+Got 50282 bytes from https://www.python.org.
+Got 366082 bytes from https://www.docker.com.
+Got 563597 bytes from https://github.com.
+.
+.
+.
+Done retrieving 300 sites in 6.31756170799963 seconds.
+                </code>
+            </pre>
+            <p>
+                There is a huge performance improvement when using <code>ThreadPoolExecutor</code> because it allows multiple threads to perform network requests concurrently.
+            </p>
+            <p>
+                Network operations are <b>I/O-bound</b>, meaning each thread often spends time waiting for a response from the server. While one thread is blocked waiting for data, the other threads can continue sending or receiving requests.
+            </p>
+            <p>
+                This overlap of waiting periods lets multiple requests progress simultaneously, instead of waiting for one to finish before starting the next. As a result, total execution time decreases significantly.
+            </p>
+
+            <b>Asynchronous I/O version:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+import asyncio
+import time
+
+import aiohttp
+
+
+async def main():
+    sites = [
+        "https://www.python.org",
+        "https://www.docker.com",
+        "https://github.com",
+    ] * 100
+    start_time = time.perf_counter()
+    async with aiohttp.ClientSession() as session:
+        tasks = [get_site(session, site) for site in sites]
+        await asyncio.gather(*tasks, return_exceptions=True)
+    duration = time.perf_counter() - start_time
+    print(f"Done retrieving {len(sites)} sites in {duration} seconds.")
+
+
+async def get_site(session, site):
+    async with session.get(site) as response:
+        print(f"Got {len(await response.read())} bytes from {site}.")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+                </code>
+            </pre>
+            <b>Output:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+(venv) % python io_asyncio.py
+Got 563573 bytes from https://github.com.
+Got 563573 bytes from https://github.com.
+Got 563573 bytes from https://github.com.
+.
+.
+.
+Done retrieving 300 sites in 3.654484542001228 seconds.
+                </code>
+            </pre>
+            <p>
+                It's faster than the multi-threaded version and about 10× faster than the synchronous version.
+            </p>
+            <p>
+                Like multithreading, <code>asyncio</code> allows multiple network requests to run concurrently. However, instead of using multiple OS threads, <code>asyncio</code> runs all tasks in a single thread using an event loop.
+            </p>
+            <p>
+                When one task is waiting for a network response, the event loop automatically switches to another task that's ready to run. This avoids the overhead of creating or switching between threads, making async I/O more lightweight and efficient for I/O-bound operations.
+            </p>
+
+            <b>Multi-processing version:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+import time
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+
+import requests
+
+
+def main():
+    sites = [
+        "https://www.python.org",
+        "https://www.docker.com",
+        "https://github.com",
+    ] * 100
+    start_time = time.perf_counter()
+    with requests.Session() as session:
+        with ProcessPoolExecutor(max_workers=3) as executor:
+            get_site_with_session = partial(get_site, session)
+            executor.map(get_site_with_session, sites)
+    duration = time.perf_counter() - start_time
+    print(f"Done retrieving {len(sites)} sites in {duration} seconds.")
+
+
+def get_site(session, site):
+    response = session.get(site)
+    print(f"Got {len(response.content)} bytes from {site}.")
+
+
+if __name__ == "__main__":
+    main()
+                </code>
+            </pre>
+            <b>Output:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+(venv) % python io_multi_processing.py
+Got 50282 bytes from https://www.python.org.
+Got 301749 bytes from https://www.docker.com.
+Got 563573 bytes from https://github.com.
+.
+.
+.
+Done retrieving 300 sites in 22.975569459000326 seconds.
+                </code>
+            </pre>
+            <p>
+                It's faster than the synchronous version but not as efficient as the multi-threaded or async I/O versions for network-bound tasks.
+            </p>
+            <p>
+                It creates <b>multiple separate processes</b> running in parallel. However, each process resembles a non-concurrent or synchronous version, also adding the extra overhead of creating and managing separate processes. That's why it's slower than <code>multi-threading</code> or <code>asyncio</code>.
+            </p>
+
+            <h4 id="performing-cpu-bound">Performing CPU-bound Component</h4>
+            <p>
+                This time, using a function to calculate prime numbers to simulate a CPU-bound process and try every version of concurrency and parallelism, similar to the I/O network request examples above.
+            </p>
+
+            <b>Synchronous version:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+import math
+import time
+
+
+def is_prime(n):
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+
+    sqrt_n = int(math.floor(math.sqrt(n)))
+    for i in range(3, sqrt_n + 1, 2):
+        if n % i == 0:
+            return False
+    return True
+
+
+def main():
+    PRIMES = [
+        112272535095293,
+        112582705942171,
+        112272535095293,
+        115280095190773,
+        115797848077099,
+        1099726899285419,
+    ] * 100
+
+    start_time = time.perf_counter()
+    for prime in PRIMES:
+        is_prime(prime)
+    duration = time.perf_counter() - start_time
+
+    print(f"Done in {duration} seconds.")
+
+
+if __name__ == "__main__":
+    main()
+                </code>
+            </pre>
+            <b>Output:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+(venv) % python cpu_sync.py
+Done in 97.74420645899954 seconds.
+                </code>
+            </pre>
+            <p>
+                So here we have the base duration of the synchronous version. Let's try multi-threading to see if there is an improvement.
+            </p>
+
+            <b>Multi-threaded version:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+import math
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+
+def is_prime(n):
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+
+    sqrt_n = int(math.floor(math.sqrt(n)))
+    for i in range(3, sqrt_n + 1, 2):
+        if n % i == 0:
+            return False
+    return True
+
+
+def main():
+    PRIMES = [
+        112272535095293,
+        112582705942171,
+        112272535095293,
+        115280095190773,
+        115797848077099,
+        1099726899285419,
+    ] * 100
+
+    start_time = time.perf_counter()
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        executor.map(is_prime, PRIMES)
+    duration = time.perf_counter() - start_time
+
+    print(f"Done in {duration} seconds.")
+
+
+if __name__ == "__main__":
+    main()
+                </code>
+            </pre>
+            <b>Output:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+(venv) % python cpu_multi_theading.py
+Done in 100.03000933300063 seconds.
+                </code>
+            </pre>
+            <p>
+                It looks like the speed slightly diminished when using <code>ThreadPoolExecutor</code> than the synchronous version.
+            </p>
+            <p>
+                This is because for CPU-bound tasks, there are no external network resources waiting, and no room for concurrent flow because each process competes for
+                acquiring the GIL.
+            </p>
+            <p>
+                Additionally, the creation and thread management introduce context-switching overhead, which can make threaded code slower than simple sequential execution.
+            </p>
+            <p>
+                The same thing can be expected for the asynchronous I/O flow.
+            </p>
+
+            <b>Asynchronous I/O version:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+import asyncio
+import math
+import time
+
+
+async def is_prime(n):
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+
+    sqrt_n = int(math.floor(math.sqrt(n)))
+    for i in range(3, sqrt_n + 1, 2):
+        if n % i == 0:
+            return False
+    return True
+
+async def main():
+    PRIMES = [
+        112272535095293,
+        112582705942171,
+        112272535095293,
+        115280095190773,
+        115797848077099,
+        1099726899285419
+    ] * 100
+ 
+    start_time = time.perf_counter()
+    tasks = [is_prime(number) for number in PRIMES]
+    await asyncio.gather(*tasks, return_exceptions=True)
+    duration = time.perf_counter() - start_time
+    print(f"Done in {duration} seconds.")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+                </code>
+            </pre>
+            <b>Output:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+(venv) % python cpu_asyncio.py
+Done in 100.84175841700016 seconds.
+                </code>
+            </pre>
+            <p>
+                Since there is no network I/O requests, the <code>async/await</code> will basically run sequentially within the event loop with extra overhead
+                of the event loop and unnecessary context switching, which makes it slower than the synchronous version. 
+            </p>
+            <p>
+                In theory, it could be the most inefficient among the other if the <code>is_prime</code> involves a recursive call, doubling the amount of overhead
+                for the <code>async/await</code> context switching. The <code>asyncio</code> was designed for I/O bound workload, not CPU-bound.
+            </p>
+            <p>Let's try the multi-processing approach.</p>
+
+            <b>Multi-processing version:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+import math
+import time
+from concurrent.futures import ProcessPoolExecutor
+
+
+def is_prime(n):
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+
+    sqrt_n = int(math.floor(math.sqrt(n)))
+    for i in range(3, sqrt_n + 1, 2):
+        if n % i == 0:
+            return False
+    return True
+
+
+def main():
+    PRIMES = [
+        112272535095293,
+        112582705942171,
+        112272535095293,
+        115280095190773,
+        115797848077099,
+        1099726899285419,
+    ] * 100
+
+    start_time = time.perf_counter()
+    with ProcessPoolExecutor(max_workers=3) as executor:
+        executor.map(is_prime, PRIMES)
+    duration = time.perf_counter() - start_time
+
+    print(f"Done in {duration} seconds.")
+
+
+if __name__ == "__main__":
+    main()
+                </code>
+            </pre>
+            <b>Output:</b>
+            <pre class="code-example">
+                <code class="code-example-body prettyprint">
+(venv) % python cpu_multi_processing.py
+Done in 35.96208695899986 seconds.
+                </code>
+            </pre>
+            <p>
+                For CPU-bound tasks, we can see that multiprocessing provides the best performance among the approaches.
+            </p>
+            <p>
+                Unlike threads or async I/O, multiple processes can execute truly in parallel on separate CPU cores, because each process runs in its own Python interpreter with its own Global Interpreter Lock (GIL) and memory space.
+            </p>
+
+            <h4 id="when-to-use">When to use concurrency and parallelism?</h4>
+            <p>
+                <b>Use concurrency</b> (<code>ThreadPoolExecutor</code> or <code>asyncio</code>) when performing I/O bound tasks such as network requests, web API calls, database queries, and
+                reading/writing files, which takes amount of waiting time from external resources to perform.
+            </p>
+            <p>
+                <b>Use parallelism</b> (<code>ProcessPoolExecutor</code>) when performing CPU-bound tasks, such as heavy data transformation or numerical
+                computation, image processing, encryption, etc.
+            </p>
+            <p>
+                In more complex workflows, you can also combine <b>concurrency</b> and <b>parallelism</b>. For example, using concurrency to download data 
+                from multiple sources and parallelism to process those datasets efficiently across CPU cores.
+            </p>
+
+            <h4 id="summary">Summary</h4>
+            <h5>For I/O-bound tasks</h5>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Approach</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><b>Synchronous:</b></td>
+                        <td>Slow, tasks block while waiting for I/O, so only one runs at a time.</td>
+                    </tr>
+                    <tr>
+                        <td><b>Multithreading:</b></td>
+                        <td>Very fast, threads can make progress while others wait on I/O; ideal for concurrent I/O workloads.</td>
+                    </tr>
+                    <tr>
+                        <td><b>Asyncio:</b></td>
+                        <td>
+                            Very fast, the most efficient. Single-threaded, but uses an event loop and cooperative context switching to handle many I/O operations
+                            concurrently with minimal overhead.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><b>Multiprocessing:</b></td>
+                        <td>Fast but not resource-efficient. unnecessary for I/O-bound work since processes add heavy overhead and duplicate memory.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <h5>For CPU-bound tasks</h5>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Approach</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><b>Synchronous:</b></td>
+                        <td>Slow, only one core is used.</td>
+                    </tr>
+                    <tr>
+                        <td><b>Multithreading:</b></td>
+                        <td>Very slow, threads compete for the GIL, preventing true parallel execution and adding context-switch overhead.</td>
+                    </tr>
+                    <tr>
+                        <td><b>Asyncio:</b></td>
+                        <td>Super slow, runs sequentially inside one thread; async overhead adds even more latency.</td>
+                    </tr>
+                    <tr>
+                        <td><b>Multiprocessing:</b></td>
+                        <td>Very fast, the most efficient, each process runs on its own core, bypassing the GIL and achieving true parallelism!</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                Hope this helps. Cheers!
+            </p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</body>
+
+</html>

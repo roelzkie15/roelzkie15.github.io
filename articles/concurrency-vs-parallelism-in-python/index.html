@@ -79,9 +79,9 @@
 
             <h4 id="performing-io-bound">Performing I/O Bound Component</h4>
             <p>
-                Let's use an I/O network request example, like downloading a page from a site using <b>synchronous</b>
-                (non-concurrent), <b>multi-threading</b> (concurrent), <b>async i/o</b> (concurrent) and
-                <b>multi-processing</b> (parallel) versions to see how quickly the program runs.
+                Let's use an I/O network request example, like downloading a page from a site using <b>Synchronous</b>
+                (non-concurrent), <b>Multi-threading</b> (concurrent), <b>Asynchronous i/o</b> (concurrent) and
+                <b>Multi-processing</b> (parallel) versions to see how quickly the program runs.
             </p>
 
             <b>Synchronous version:</b>
@@ -133,7 +133,7 @@ Done retrieving 300 sites in 32.525531874998705 seconds.
                 It took <b>32 seconds</b> because the single-threaded program is waiting for the network to finish before moving on to the next one.
             </p>
 
-            <b>Multi-threaded version:</b>
+            <b>Multi-threading version:</b>
             <pre class="code-example">
                 <code class="code-example-body prettyprint">
 import time
@@ -148,7 +148,7 @@ def main():
         "https://www.python.org",
         "https://www.docker.com",
         "https://github.com",
-    ]
+    ] * 100
     start_time = time.perf_counter()
     with requests.Session() as session:
         with ThreadPoolExecutor(max_workers=3) as executor:
@@ -236,7 +236,7 @@ Done retrieving 300 sites in 3.654484542001228 seconds.
                 </code>
             </pre>
             <p>
-                It's faster than the multi-threaded version and about 10× faster than the synchronous version.
+                It's faster than the Multi-threading version and about 10× faster than the synchronous version.
             </p>
             <p>
                 Like multithreading, <code>asyncio</code> allows multiple network requests to run concurrently. However, instead of using multiple OS threads, <code>asyncio</code> runs all tasks in a single thread using an event loop.
@@ -359,7 +359,7 @@ Done in 97.74420645899954 seconds.
                 So here we have the base duration of the synchronous version. Let's try multi-threading to see if there is an improvement.
             </p>
 
-            <b>Multi-threaded version:</b>
+            <b>Multi-threading version:</b>
             <pre class="code-example">
                 <code class="code-example-body prettyprint">
 import math
